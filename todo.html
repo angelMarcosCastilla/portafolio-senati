@@ -1,0 +1,993 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --blue-primary: #2185d0;
+        --orange-notes: #f9e1bc;
+        --green-notes: #d9f7be;
+        --red-notes: #f7d9d9;
+        --blue-notes: #d9ebf7;
+      }
+      * {
+        box-sizing: border-box;
+        padding: 0;
+        margin: 0;
+      }
+      li {
+        list-style: none;
+      }
+
+      header {
+        padding: 15px 20px;
+      }
+      .container-columns {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        min-height: 80vh;
+      }
+      .col {
+        min-height: 80vh;
+        border-radius: 5px;
+      }
+      .col:not(:first-child) {
+        border-left: 2px dashed rgb(192, 192, 192);
+      }
+      .header-column {
+        font-size: 20px;
+        margin-bottom: 20px;
+        font-weight: bold;
+        border-bottom: 2px solid black;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 15px;
+        padding: 5px 10px;
+        & span {
+          font-size: 11px;
+          background: black;
+          color: white;
+          padding: 2px;
+          border-radius: 5px;
+          width: 20px;
+          display: grid;
+          place-content: center;
+        }
+      }
+      .list {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 10px;
+      }
+      .list li {
+        position: relative;
+        cursor: grab;
+        padding: 5px;
+        gap: 10px;
+        padding: 12px 8px;
+        border-radius: 6px;
+        box-shadow: 0px 1px 1px #091e423f, 0px -1px 1px #091e4221;
+        background-color: white;
+        display: grid;
+        border: 1px solid #dcdcdc;
+        grid-template-columns: 1fr auto;
+        border: 1px solid #fafbfc;
+        &.selected {
+          border-color: black;
+        }
+        &:hover {
+          background-color: #fafbfc;
+        }
+        & button {
+          border-style: none;
+          cursor: pointer;
+          font-weight: 500;
+          border-radius: 3px;
+          background: rgba(9, 30, 66, 0.04);
+          color: #42526e;
+          width: 1.71429em;
+          height: 1.71429em;
+        }
+        & input[type="checkbox"]:checked + label {
+          color: var(--blue-primary) !important;
+          text-decoration: line-through;
+        }
+      }
+
+      .previous {
+        opacity: 0.4;
+        pointer-events: none;
+      }
+      .activeColumn .footer {
+        pointer-events: none;
+      }
+
+      .footer {
+        background-color: rgb(234, 234, 235);
+        border-radius: 5px;
+        & input {
+          border: none;
+          background-color: transparent;
+          padding: 10px;
+          outline: none;
+          width: 100%;
+        }
+      }
+
+      .activeColumn {
+        background-color: #f6fbff;
+      }
+
+      .bg-black {
+        background-color: black;
+        color: white;
+      }
+
+      .btn-icon {
+        background: none;
+        border: none;
+        color: #7a7a7a;
+      }
+      .input-label {
+        display: block;
+      }
+      #editor {
+        height: 120px;
+      }
+
+      .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 10;
+        visibility: hidden;
+      }
+
+      .sidebar-container {
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        width: 550px;
+        height: 100%;
+        background-color: white;
+        z-index: 11;
+        padding: 20px;
+      }
+      .color-note {
+        width: 20px;
+        cursor: pointer;
+        height: 20px;
+        background-color: rgb(234, 234, 235);
+      }
+
+      .orange {
+        background-color: var(--orange-notes);
+      }
+      .green {
+        background-color: var(--green-notes);
+      }
+      .red {
+        background-color: var(--red-notes);
+      }
+      .blue {
+        background-color: var(--blue-notes);
+      }
+
+      .notes {
+        padding: 12px;
+        width: 320px;
+        background-color: rgb(243, 233, 207);
+        height: 170px;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+        & .notes-title {
+          font-size: 14px;
+          font-weight: bold;
+          margin-bottom: 10px;
+          line-height: 1.1;
+        }
+        & .notes-description {
+          font-size: 13px;
+          line-height: 1.2;
+        }
+      }
+
+      .ui.selection,
+      #create-meeting input[type="text"] {
+        min-width: 300px !important;
+      }
+
+      #selection-box {
+        position: absolute;
+        border: 1px dashed #999;
+        background-color: rgba(173, 216, 230, 0.5);
+        display: none;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body style="font-size: 14px">
+    <span type="hidden" id="employee" data-value="11381"></span>
+    <div class="pusher dimmed">
+      <header class="bg-black">
+        <div class="ui header">
+          <img class="ui mini circular image" src="" />
+          <div class="content">
+            <div class="ui sub header" style="color: white">Angel Marcos</div>
+          </div>
+        </div>
+      </header>
+      <div
+        style="
+          display: flex;
+          gap: 10px;
+          align-items: center;
+          padding: 15px 25px;
+        "
+      >
+        <a
+          class="ui icon button"
+          href="https://tstdrv1930452.extforms.netsuite.com/app/site/hosting/scriptlet.nl?script=1616&deploy=1&compid=TSTDRV1930452&ns-at=AAEJ7tMQ5HxDKq_bR3EPQp9fltA527aluzezsI7DrxipWtstybs&_t=11381&_d=02/09/2024"
+        >
+          <i class="angle left icon"></i>
+        </a>
+        <span style="font-size: 16px; font-weight: bold"
+          >Semana 9/9/2024 a 13/9/2024</span
+        >
+        <a
+          class="ui icon button"
+          href="https://tstdrv1930452.extforms.netsuite.com/app/site/hosting/scriptlet.nl?script=1616&deploy=1&compid=TSTDRV1930452&ns-at=AAEJ7tMQ5HxDKq_bR3EPQp9fltA527aluzezsI7DrxipWtstybs&_t=11381&_d=16/09/2024"
+        >
+          <i class="angle right icon"></i>
+        </a>
+      </div>
+      <div style="padding: 10px 20px">
+        <div style="margin-block-end: 20px; display: flex; gap: 10px">
+          <div class="ui black buttons">
+            <div class="ui button">Meetings</div>
+            <div class="ui floating dropdown icon button">
+              <i class="dropdown icon"></i>
+              <div class="menu">
+                <div class="item" data-value="create">create</div>
+                <div class="item" data-value="list">List</div>
+              </div>
+            </div>
+          </div>
+          <!-- <div
+            style="
+              display: flex;
+              align-items: center;
+              padding-left: 10px;
+              border-left: 1px solid black;
+            "
+          >
+            <span>Sticky Notes: </span>
+            <div style="display: flex; gap: 4px; padding-left: 10px">
+              <span class="color-note orange"></span>
+              <span class="color-note green"></span>
+              <span class="color-note red"></span>
+              <span class="color-note blue"></span>
+            </div>
+          </div> -->
+        </div>
+        <!-- <div>
+          <div class="notes orange">
+            <div class="notes-content">
+              <p class="notes-title">
+                No olvides que debes realizar una cotización mensual
+              </p>
+              <div class="notes-description">
+                este es una pequeña muy pequeñita diria super pequeñita
+                description
+              </div>
+            </div>
+          </div>
+        </div> -->
+      </div>
+      <div>
+        <div class="container-columns">
+          <div class="col" data-sortable="Yes" data-date="9/9/2024">
+          <div class="header-column">Monday <span>0</span></div>
+          <ol class="list dragable-list" style="padding: 15px;">
+          
+          </ol>
+            <div class="footer" style="position: relative; margin: 0 15px;">
+            <input
+              type="text"
+              class="input-text"
+              placeholder="Write semeone"
+            />
+            <div class="ui active mini primary inline loader" style="display: none; position: absolute; top: 50%; transform: translateY(-50%); margin-left: auto; margin-right: 5px; right: 0;"></div>
+          </div>
+        </div>
+          <div class="col" data-sortable="Yes" data-date="9/10/2024">
+          <div class="header-column">Tuesday <span>0</span></div>
+          <ol class="list dragable-list" style="padding: 15px;">
+          
+          </ol>
+            <div class="footer" style="position: relative; margin: 0 15px;">
+            <input
+              type="text"
+              class="input-text"
+              placeholder="Write semeone"
+            />
+            <div class="ui active mini primary inline loader" style="display: none; position: absolute; top: 50%; transform: translateY(-50%); margin-left: auto; margin-right: 5px; right: 0;"></div>
+          </div>
+        </div>
+          <div class="col" data-sortable="Yes" data-date="9/11/2024">
+          <div class="header-column">Wednesday <span>0</span></div>
+          <ol class="list dragable-list" style="padding: 15px;">
+          
+          </ol>
+            <div class="footer" style="position: relative; margin: 0 15px;">
+            <input
+              type="text"
+              class="input-text"
+              placeholder="Write semeone"
+            />
+            <div class="ui active mini primary inline loader" style="display: none; position: absolute; top: 50%; transform: translateY(-50%); margin-left: auto; margin-right: 5px; right: 0;"></div>
+          </div>
+        </div>
+          <div class="col" data-sortable="Yes" data-date="9/12/2024">
+          <div class="header-column">Thursday <span>0</span></div>
+          <ol class="list dragable-list" style="padding: 15px;">
+          
+          </ol>
+            <div class="footer" style="position: relative; margin: 0 15px;">
+            <input
+              type="text"
+              class="input-text"
+              placeholder="Write semeone"
+            />
+            <div class="ui active mini primary inline loader" style="display: none; position: absolute; top: 50%; transform: translateY(-50%); margin-left: auto; margin-right: 5px; right: 0;"></div>
+          </div>
+        </div>
+          <div class="col" data-sortable="Yes" data-date="9/13/2024">
+          <div class="header-column">Friday <span>1</span></div>
+          <ol class="list dragable-list" style="padding: 15px;">
+              <li class="list-item" draggable='true' data-taskid="10">
+                <div class="ui checkbox">
+                  <input type="checkbox" id="task-10"  />
+                  <label for="task-10">prueba 2</label>
+                </div>
+                <button class="edit-task-btn">
+                  <svg data-testid="geist-icon" height="12" stroke-linejoin="round" viewBox="0 0 16 16" width="16" style="color: currentcolor;"><path fill-rule="evenodd" clip-rule="evenodd" d="M11.75 0.189331L12.2803 0.719661L15.2803 3.71966L15.8107 4.24999L15.2803 4.78032L5.15901 14.9016C4.45575 15.6049 3.50192 16 2.50736 16H0.75H0V15.25V13.4926C0 12.4981 0.395088 11.5442 1.09835 10.841L11.2197 0.719661L11.75 0.189331ZM11.75 2.31065L9.81066 4.24999L11.75 6.18933L13.6893 4.24999L11.75 2.31065ZM2.15901 11.9016L8.75 5.31065L10.6893 7.24999L4.09835 13.841C3.67639 14.2629 3.1041 14.5 2.50736 14.5H1.5V13.4926C1.5 12.8959 1.73705 12.3236 2.15901 11.9016ZM9 16H16V14.5H9V16Z" fill="currentColor"></path></svg>
+                </button>
+            </li>
+          
+          </ol>
+            <div class="footer" style="position: relative; margin: 0 15px;">
+            <input
+              type="text"
+              class="input-text"
+              placeholder="Write semeone"
+            />
+            <div class="ui active mini primary inline loader" style="display: none; position: absolute; top: 50%; transform: translateY(-50%); margin-left: auto; margin-right: 5px; right: 0;"></div>
+          </div>
+        </div>
+        </div>
+      </div>
+      <!-- ============= modales ============= -->
+      <div class="ui modal">
+        <i class="close icon"></i>
+        <div class="header">Profile Picture</div>
+        <div class="content">
+          <div class="description">
+            <form action="" id="create-meeting">
+              <div style="display: flex; gap: 10px; flex-direction: column">
+                <label>
+                  <span class="input-label">Title</span>
+                  <div class="ui input">
+                    <input type="text" name="title" />
+                  </div>
+                </label>
+                <label>
+                  <span class="input-label">Task</span>
+                  <select
+                    class="ui selection dropdown"
+                    name="task"
+                    id="select-title"
+                  >
+                    <option value="">Pet</option>
+                    <option value="0">Cat</option>
+                    <option value="1">Dog</option>
+                    <option value="2">Bird</option>
+                    <option value="3">Rabbit</option>
+                    <option value="4">Squirrel</option>
+                    <option value="5">Horse</option>
+                    <option value="6">Turtle</option>
+                    <option value="7">Parrot</option>
+                  </select>
+                </label>
+                <div>
+                  <span class="input-label">Duration</span>
+                  <div style="display: flex; gap: 10px">
+                    <div class="ui input" style="width: 145px">
+                      <input
+                        type="time"
+                        placeholder="Search..."
+                        name="durationStart"
+                      />
+                    </div>
+                    <div class="ui input" style="width: 145px">
+                      <input
+                        type="time"
+                        placeholder="Search..."
+                        name="durationEnd"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <span class="input-label">Description</span>
+                  <div id="toolbar">
+                    <span class="ql-formats">
+                      <button class="ql-bold"></button>
+                      <button class="ql-italic"></button>
+                      <button class="ql-underline"></button>
+                      <button class="ql-strike"></button>
+                      <button
+                        class="ql-image"
+                        type="button"
+                        aria-pressed="false"
+                      ></button>
+                    </span>
+                    <span class="ql-formats">
+                      <button class="ql-list" value="ordered"></button>
+                      <button class="ql-list" value="bullet"></button>
+                      <button class="ql-indent" value="-1"></button>
+                      <button class="ql-indent" value="+1"></button>
+                    </span>
+                  </div>
+                  <div id="editor"></div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="ui deny button">Cancel</button>
+          <button class="ui secondary button" form="create-meeting">
+            Save
+          </button>
+        </div>
+      </div>
+      <template id="task-item-template">
+        <li class="list-item" draggable="true">
+          <div class="ui checkbox">
+            <input type="checkbox" id="checkbox-1" />
+            <label for="checkbox-1">Make my profile visible</label>
+          </div>
+          <button class="edit-task-btn">
+            <svg
+              data-testid="geist-icon"
+              height="12"
+              stroke-linejoin="round"
+              viewBox="0 0 16 16"
+              width="16"
+              style="color: currentcolor"
+            >
+              <path
+                fill-rule="evenodd"
+                clip-rule="evenodd"
+                d="M11.75 0.189331L12.2803 0.719661L15.2803 3.71966L15.8107 4.24999L15.2803 4.78032L5.15901 14.9016C4.45575 15.6049 3.50192 16 2.50736 16H0.75H0V15.25V13.4926C0 12.4981 0.395088 11.5442 1.09835 10.841L11.2197 0.719661L11.75 0.189331ZM11.75 2.31065L9.81066 4.24999L11.75 6.18933L13.6893 4.24999L11.75 2.31065ZM2.15901 11.9016L8.75 5.31065L10.6893 7.24999L4.09835 13.841C3.67639 14.2629 3.1041 14.5 2.50736 14.5H1.5V13.4926C1.5 12.8959 1.73705 12.3236 2.15901 11.9016ZM9 16H16V14.5H9V16Z"
+                fill="currentColor"
+              ></path>
+            </svg>
+          </button>
+        </li>
+      </template>
+    </div>
+
+    <!-- ============ modal edit Task ============ -->
+    <div class="ui tiny modal" id="modal-edit-task">
+      <i class="close icon"></i>
+      <div class="header">Edit Task</div>
+      <div class="content">
+        <form id="edit-task-form">
+          <div class="ui form">
+            <div class="field">
+              <label>Description</label>
+              <textarea rows="2" name="description"></textarea>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div
+        class="actions"
+        style="display: flex; justify-content: space-between"
+      >
+        <button class="ui red basic icon button" tabindex="-1" id="delete-task">
+          <i class="trash icon"></i>
+        </button>
+        <div>
+          <button class="ui deny button">Cancel</button>
+          <button class="ui secondary button" form="edit-task-form">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =========== Sidebar ============= -->
+    <div class="ui right wide sidebar" id="sidebar" style="width: 550px">
+      <div style="background-color: white; height: 100%; padding: 30px 20px">
+        <h2 style="margin-bottom: 40px">Save Meetings</h2>
+        <button
+          style="margin-bottom: 30px"
+          class="ui secondary button"
+          id="create-from-sidebar"
+        >
+          Create
+        </button>
+        <div>
+          <table class="ui celled tiny compact table">
+            <thead>
+              <tr>
+                <th>View</th>
+                <th>Title</th>
+                <th>Date</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>-</td>
+                <td>este es la descrioion de un atresTarea 1</td>
+                <td>12/12/2023</td>
+                <td>3:00</td>
+                <td>3:50</td>
+                <td>1h</td>
+              </tr>
+              <tr>
+                <td>-</td>
+                <td>Tarea No 2</td>
+                <td>12/12/2023</td>
+                <td>3:00</td>
+                <td>3:50</td>
+                <td>1h</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="selection-box"></div>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+
+    <!-- <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script> -->
+    <script>
+      const $$columnsBoard = document.querySelectorAll(
+        "div[data-sortable='Yes']"
+      );
+      const $$listItems = document.querySelectorAll(".list li");
+      const $$inputNewTask = document.querySelectorAll(".input-text");
+      const $taskItemTemplate = document.querySelector("#task-item-template");
+      const $createMeetingForm = document.querySelector("#create-meeting");
+      const EMPLOYEE_ID = document.getElementById("employee").dataset.value;
+      const $btnCreateFromSidebar = document.querySelector(
+        "#create-from-sidebar"
+      );
+      const $editTaskForm = document.querySelector("#edit-task-form");
+      const $btnDeleteTask = document.querySelector("#delete-task");
+      const URL_ENV = "";
+
+      const $modalCreate = $(".ui.modal").modal({
+        onHidden() {
+          quill.root.innerHTML = "";
+          $("#select-title").dropdown("clear");
+          $createMeetingForm.reset();
+        },
+      });
+
+      const modalEditTask = $("#modal-edit-task").modal();
+      const $selectionBox = document.getElementById("selection-box");
+      let isSelecting = false;
+      let isDragging = false;
+      let startX, startY;
+      let $selectedCards = [];
+      let columnBounds ;
+      let $dragElement = null;
+      let $columnStart = null;
+      let taskinfo = null;
+
+      const generateRandomId = () => crypto.randomUUID();
+
+      $(".dropdown").dropdown({
+        onChange(value, text, $choice) {
+          if (value === "create") {
+            $modalCreate.modal("show");
+          }
+
+          if (value === "list") {
+            $("#sidebar")
+              .sidebar("setting", "transition", "overlay")
+              .sidebar("toggle");
+          }
+        },
+        transition: "drop",
+      });
+
+      const quill = new Quill("#editor", {
+        modules: {
+          toolbar: "#toolbar",
+        },
+        theme: "snow",
+      });
+
+      function isIntersecting(rect1, rect2) {
+        return !(
+          rect2.left > rect1.right ||
+          rect2.right < rect1.left ||
+          rect2.top > rect1.bottom ||
+          rect2.bottom < rect1.top
+        );
+      }
+      $btnCreateFromSidebar.addEventListener("click", () => {
+        $modalCreate.modal("show");
+      });
+
+      /*==================Drag and drop ==================*/
+    
+      function handleDrop(e) {
+        e.preventDefault();
+        const { currentTarget } = e;
+
+        if (currentTarget === $columnStart) return;
+        const $listItem = currentTarget.querySelector(".list");
+        const dataToSend = {
+          updateBoard: true,
+          records: []
+        }
+
+        if ($selectedCards.length > 0 && $selectedCards.includes($dragElement)) {
+          $selectedCards.forEach((card) => {
+            card.classList.remove("selected");
+            $listItem.appendChild(card);
+            dataToSend.records.push({
+              id: card.dataset.taskid,
+              date: currentTarget.dataset.date
+            })
+          });
+        }
+
+        if ($dragElement && $columnStart && $selectedCards.length == 0) {
+          const columnDate = currentTarget.dataset.date;
+          $listItem.appendChild($dragElement);
+          dataToSend.records.push({
+            id: $dragElement.dataset.taskid,
+            date: columnDate
+          })
+        }
+        
+        const $headerCount = currentTarget.querySelector(".header-column span");
+        $headerCount.textContent = dataToSend.records.length + Number($headerCount.textContent.trim());
+        
+        const $headerStartCount = $columnStart.querySelector(".header-column span");
+        $headerStartCount.textContent =  Number($headerStartCount.textContent.trim()) - dataToSend.records.length;
+
+        currentTarget
+          .querySelectorAll(".previous")
+          .forEach((preview) => preview.remove());
+        currentTarget.classList.remove("activeColumn");
+        $selectedCards = [];
+        // enviar para cambiar las columnas
+        console.log(dataToSend);
+      }
+
+      function handleOver(e) {
+        e.preventDefault();
+        const $currentColumn = e.currentTarget;
+        // cuando estamos arrastrando en el mismo elemento no se muestra la previzualizacion
+        if ($currentColumn === $columnStart) return;
+
+        const $listItem = $currentColumn.querySelector(".list");
+        $currentColumn.classList.add("activeColumn");
+
+        // multiple previzualizacion
+        if (
+          $selectedCards.length > 0 &&
+          $selectedCards.includes($dragElement) &&
+          !document.querySelector(".previous")
+        ) {
+          $selectedCards.forEach((card) => {
+            const $previousElement = card.cloneNode(true);
+            $previousElement.classList.add("previous");
+            $listItem.appendChild($previousElement);
+          });
+        }
+
+        // una previzualizacion
+        if ($dragElement && !document.querySelector(".previous")) {
+          const $previousElement = $dragElement.cloneNode(true);
+          $previousElement.classList.add("previous");
+          $listItem.appendChild($previousElement);
+        }
+      }
+
+      function handleDragItem(item) {
+        item.addEventListener("dragstart", (e) => {
+          $columnStart = e.target.closest(".col");
+          $dragElement = e.target;
+          if( $selectedCards.length > 0 && !$selectedCards.includes($dragElement)){
+            $selectedCards.forEach(card => card.classList.remove("selected"));
+            $selectedCards = [] 
+          }
+        });
+        item.addEventListener("dragend", (e) => {
+          $columnStart = null;
+          $dragElement = null;
+          $selectedCards.forEach((card) => card.classList.remove("selected"));
+          $selectedCards = [];
+        });
+      }
+
+      function handleMouseDown(e, column) {
+        if (
+          e.target.classList.contains("list-item") ||
+          e.target.closest(".list-item")
+        )
+          return;
+        isSelecting = true;
+        startX = e.pageX;
+        startY = e.pageY;
+        columnBounds = column.getBoundingClientRect();
+
+        $selectionBox.style.left = startX + "px";
+        $selectionBox.style.top = startY + "px";
+        $selectionBox.style.width = "0px";
+        $selectionBox.style.height = "0px";
+        $selectionBox.style.display = "block";
+
+        document
+          .querySelectorAll(".list-item.selected")
+          .forEach((card) => card.classList.remove("selected"));
+        $selectedCards = [];
+      }
+
+      function handleMouseMove(e, column) {
+        if (!isSelecting) return;
+
+        const currentX = e.pageX;
+        const currentY = e.pageY;
+
+        const width = currentX - startX;
+        const height = currentY - startY;
+
+        $selectionBox.style.width =  Math.abs(width) + "px";
+        $selectionBox.style.height = Math.abs(height) + "px";
+
+        $selectionBox.style.left = Math.min(currentX, startX) + "px";
+        $selectionBox.style.top = Math.min(currentY, startY) + "px";
+
+        // Mantener selección dentro de la columna
+        if (
+          currentX < columnBounds.left ||
+          currentX > columnBounds.right ||
+          currentY < columnBounds.top ||
+          currentY > columnBounds.bottom
+        ) {
+          $selectedCards.forEach((card) => card.classList.remove("selected"));
+          $selectedCards = [];
+        } else {
+          column.querySelectorAll(".list-item").forEach((card) => {
+            const cardRect = card.getBoundingClientRect();
+            const selectionRect = $selectionBox.getBoundingClientRect();
+
+            if (isIntersecting(cardRect, selectionRect)) {
+              card.classList.add("selected");
+              if (!$selectedCards.includes(card)) $selectedCards.push(card);
+            } else {
+              card.classList.remove("selected");
+              $selectedCards = $selectedCards.filter((c) => c !== card);
+            }
+          });
+        }
+      }
+
+      $$columnsBoard.forEach((column) => {
+        /*  new Sortable(column.querySelector("ol"), {
+        animation: 150,
+        ghostClass: "blue-background-class",
+      }); */
+        column.addEventListener("drop", handleDrop);
+
+        column.addEventListener("dragover", handleOver);
+
+        column.addEventListener("dragleave", (e) => {
+          e.preventDefault();
+          const { currentTarget, relatedTarget } = e;
+          // ver si el puntero se encuentra dentro del elemento
+          if (column.contains(e.relatedTarget)) return;
+          currentTarget
+            .querySelectorAll(".previous")
+            .forEach((preview) => preview.remove());
+          currentTarget.classList.remove("activeColumn");
+        });
+
+        const $listBox = column.querySelector(".dragable-list");
+        $listBox?.addEventListener("mousedown", (e) => handleMouseDown(e, column));
+        $listBox?.addEventListener("mousemove", (e) => handleMouseMove(e, column));
+
+        $listBox?.addEventListener("mouseup", () => {
+          isSelecting = false;
+          $selectionBox.style.display = "none";
+        });
+
+        $listBox?.addEventListener("mouseleave", (e) => {
+          if (!isSelecting) return;
+          isSelecting = false;
+          $selectionBox.style.display = "none";
+        });
+      });
+
+      $$listItems.forEach((item) => {
+        handleDragItem(item);
+      });
+
+      /*==================Drag and drop ==================*/
+
+      /*==================Typing new task ==================*/
+      function handleNewTask(e) {
+        const parentColumn = e.target.closest(".col");
+        const $cloneTaskItem = $taskItemTemplate.content.cloneNode(true);
+        const $checkbox = $cloneTaskItem.querySelector("input[type=checkbox]");
+        const $label = $cloneTaskItem.querySelector("label");
+        $label.textContent = e.target.value;
+        const listItem = $cloneTaskItem.querySelector(".list-item");
+
+        const dataToSend = {
+          createTask: true,
+          record: {
+            date: parentColumn.dataset.date,
+            description: e.target.value,
+            employeeId: EMPLOYEE_ID,
+          },
+        };
+
+        const $loader = parentColumn.querySelector(".loader");
+        $loader.style.display = "block";
+        e.target.disabled = true;
+
+        fetch(URL_ENV, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(dataToSend),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            $checkbox.id = "task-" + data.recordId;
+            $label.setAttribute("for", "task-" + data.recordId);
+            listItem.setAttribute("data-taskid", data.recordId);
+            parentColumn.querySelector(".list").appendChild($cloneTaskItem);
+            handleDragItem(listItem);
+            e.target.value = "";
+            const $headerCount = parentColumn.querySelector(".header-column span");
+            $headerCount.textContent = dataToSend.records.length + Number($headerCount.textContent.trim());
+
+          })
+          .catch((error) => {})
+          .finally(() => {
+            $loader.style.display = "none";
+            e.target.disabled = false;
+          });
+      }
+
+      function printTaskInfo() {
+        if (taskinfo) {
+          $editTaskForm.description.value = taskinfo.content;
+          const $modalEditTask = document.querySelector("#modal-edit-task");
+          const $$actions = $modalEditTask.querySelectorAll("button");
+          $$actions.forEach(($action) => {
+            $action.classList.remove("disabled", "loading");
+          });
+        }
+      }
+
+      $$inputNewTask.forEach((input) => {
+        input.addEventListener("keyup", (e) => {
+          if (e.key === "Enter") {
+            if (e.target.value === "") return;
+            handleNewTask(e);
+          }
+        });
+      });
+      /*================== End Typing new task ==================*/
+
+      /*==================  create meeting ==================*/
+      $createMeetingForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData($createMeetingForm));
+        const description = quill.root.innerHTML;
+        console.log({ ...data, description });
+        //TODO: Guardar en base de datos
+      });
+      /*================== End create meeting ==================*/
+
+      document.addEventListener("click", (e) => {
+        if (e.target.closest(".edit-task-btn")) {
+          const $currentTask = e.target.closest(".list-item");
+          const taskId = $currentTask.dataset.taskid;
+          const content = $currentTask.querySelector("label").textContent;
+          taskinfo = { taskId, content };
+          printTaskInfo();
+          modalEditTask.modal("show");
+        }
+      });
+
+      $btnDeleteTask.addEventListener("click", () => {
+        const $modalDeleteTask = document.querySelector("#modal-edit-task");
+        const $$actions = $modalDeleteTask.querySelectorAll("button");
+        $$actions.forEach(($action) => {
+          $action.classList.remove("disabled");
+        });
+        $btnDeleteTask.classList.add("loading");
+        fetch(URL_ENV, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            deleteTask: true,
+            id: taskinfo.taskId,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if(data.isSucess){
+              const $currentTask = document.querySelector(".list-item[data-taskid='" + taskinfo.taskId + "']");
+              const $headerCount = $currentTask.closest(".col").querySelector(".header-column span");
+              $headerCount.textContent = Number($headerCount.textContent.trim()) - 1;
+              $currentTask.remove();
+            }
+          })
+          .catch((error) => {})
+          .finally(() => {
+            $$actions.forEach(($action) => {
+              $action.classList.remove("disabled");
+            });
+            $btnDeleteTask.classList.remove("loading");
+            modalEditTask.modal("hide");
+          });
+      });
+
+      /*================== Edit Task ==================*/
+      $editTaskForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData($editTaskForm));
+        const dataToSend = {
+          updateTask: true,
+          records: {
+            id: taskinfo.taskId,
+            ...data,
+          },
+        };
+        console.log(dataToSend);
+        //TODO: Guardar en base de datos
+      });
+    </script>
+  </body>
+</html>
+
+
